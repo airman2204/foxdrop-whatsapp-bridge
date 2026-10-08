@@ -339,18 +339,37 @@ app.post('/message/sendText', async (req, res) => {
     } else {
       let digits = number.replace(/\D/g, '');
       
-      // Si parece ser un LID (14+ dígitos y comienza con 64 u similar)
+      // Si es un LID numérico puro
       if (digits.length >= 14 && digits.startsWith('64')) {
         targetJid = `${digits}@lid`;
       } else {
-        // Formato número de teléfono estándar
-        if (digits.length === 10) {
-          digits = `52${digits}`;
+        // En WhatsApp para números de México, Baileys a menudo falla si se usa 52 en vez de 521 o viceversa.
+        // Consultamos onWhatsApp para obtener el JID exacto y activo en los servidores de WhatsApp.
+        try {
+          const candidates = [];
+          if (digits.startsWith('52') && digits.length === 12) {
+            candidates.push(`521${digits.slice(2)}@s.whatsapp.net`, `${digits}@s.whatsapp.net`);
+          } else if (digits.startsWith('521') && digits.length === 13) {
+            candidates.push(`${digits}@s.whatsapp.net`, `52${digits.slice(3)}@s.whatsapp.net`);
+          } else if (digits.length === 10) {
+            candidates.push(`521${digits}@s.whatsapp.net`, `52${digits}@s.whatsapp.net`);
+          } else {
+            candidates.push(`${digits}@s.whatsapp.net`);
+          }
+
+          const results = await sock.onWhatsApp(...candidates);
+          const valid = results?.find(r => r.exists && r.jid);
+          if (valid && valid.jid) {
+            targetJid = valid.jid;
+            console.log(`🎯 JID exacto verificado con WhatsApp para ${number}: ${targetJid}`);
+          } else {
+            // Fallback a 521 si es de 10 dígitos o 52
+            targetJid = digits.length === 10 ? `521${digits}@s.whatsapp.net` : `${digits}@s.whatsapp.net`;
+          }
+        } catch (onErr) {
+          console.warn('Advertencia onWhatsApp:', onErr.message);
+          targetJid = digits.length === 10 ? `521${digits}@s.whatsapp.net` : `${digits}@s.whatsapp.net`;
         }
-        if (digits.startsWith('521') && digits.length === 13) {
-          digits = `52${digits.slice(3)}`;
-        }
-        targetJid = `${digits}@s.whatsapp.net`;
       }
     }
 
