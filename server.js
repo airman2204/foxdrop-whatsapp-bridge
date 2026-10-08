@@ -296,14 +296,18 @@ app.all('/reset', async (req, res) => {
       try { sock.end(new Error('Reset solicitado')); } catch {}
     }
     if (fs.existsSync(authDir)) {
-      fs.rmSync(authDir, { recursive: true, force: true });
+      try { fs.rmSync(authDir, { recursive: true, force: true }); } catch {}
     }
-    await supabase.from('whatsapp_chats').delete().eq('phone', '_system_baileys_auth').catch(() => {});
+    try {
+      await supabase.from('whatsapp_chats').delete().eq('phone', '_system_baileys_auth');
+    } catch {}
+
     qrCodeData = null;
     connectionStatus = 'connecting';
     setTimeout(startWhatsApp, 1500);
     res.json({ success: true, message: 'Sesión purgada exitosamente. Nuevo QR en camino...' });
   } catch (err) {
+    console.error('Error en /reset:', err);
     res.status(500).json({ error: err.message });
   }
 });
