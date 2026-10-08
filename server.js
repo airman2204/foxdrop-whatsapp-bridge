@@ -17,7 +17,7 @@ const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIs
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 const PORT = process.env.PORT || 3001;
-const WEBHOOK_URL = process.env.WEBHOOK_URL || ''; // URL de tu tienda: https://tudominio.com/api/whatsapp/webhook
+const WEBHOOK_URL = process.env.WEBHOOK_URL || 'https://foxdrop.mx/api/whatsapp/webhook';
 const API_KEY = process.env.API_KEY || 'foxdrop_secret_2026';
 
 let qrCodeData = null;
