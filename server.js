@@ -128,11 +128,11 @@ async function startWhatsApp() {
       connectionStatus = 'disconnected';
       qrCodeData = null;
 
-      // Si el código es 401 (Unauthorized / Logged out), 403 o error terminal, purgar llaves dañadas para emitir nuevo QR
-      const isTerminalAuthError = statusCode === DisconnectReason.loggedOut || statusCode === 401 || statusCode === 403 || statusCode === 500;
+      // Solo purgar credenciales si el usuario dio explícitamente "Cerrar sesión" en su celular (401 loggedOut)
+      const isExplicitLogOut = statusCode === DisconnectReason.loggedOut;
       
-      if (isTerminalAuthError) {
-        console.log(`🚪 Sesión inválida o cerrada (status: ${statusCode}). Purgando llaves y forzando nuevo QR...`);
+      if (isExplicitLogOut) {
+        console.log(`🚪 Sesión cerrada explícitamente desde el celular (status: ${statusCode}). Purgando llaves...`);
         try {
           await supabase.from('whatsapp_chats').delete().eq('phone', '_system_baileys_auth');
           if (fs.existsSync(authDir)) fs.rmSync(authDir, { recursive: true, force: true });
@@ -140,7 +140,9 @@ async function startWhatsApp() {
           console.warn('Error purgando authDir:', e.message);
         }
         setTimeout(startWhatsApp, 2000);
-      } else if (shouldReconnect) {
+      } else {
+        // En cualquier otra desconexión (500, 515, 408 timeout, caída de red), reconectar con las credenciales existentes
+        console.log(`🔄 Reconectando WhatsApp automáticamente usando sesión guardada...`);
         setTimeout(startWhatsApp, 3000);
       }
     } else if (connection === 'open') {
